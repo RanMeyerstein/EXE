@@ -1,68 +1,30 @@
 // ProRBT.cpp : Defines the entry point for the console application.
 //
 
+
 #include "stdafx.h"
 #include <iostream>
 #include <fstream>
 #include "Socket.h"
-#include "Iphlpapi.h"
-#include "windows.h"
+
+Socket _socket;
+int size;
 
 using namespace std;
 
-typedef struct
+struct PRORBTPARAMS
 {
-	_TCHAR Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2];
-}PRORBTPARAMS, *pPRORBTPARAMS;
-
-BOOL GetDesktopIp(char *ipAddr, int len);
-
-Socket _socket;
-char desktopIp[16] = {0};
-int port = 50004;
-
-DWORD WINAPI SocketThread(HANDLE hExitEvent)
-{
-	while (WaitForSingleObject(hExitEvent, 100) == WAIT_TIMEOUT)
-	{
-		if (_socket.IsConnected())
-		{
-			char *buffer = (char *)_socket.Receive(6);
-			if (!buffer)
-				continue;
-
-			if (buffer[0] == '`')
-			{
-
-			}
-
-			free(buffer);
-		}
-		else
-		{
-			_socket.Disconnect();
-			_socket.Connect(desktopIp, port);
-		}
-	}
-
-	return 0;
-}
+	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2];
+};
 
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	PRORBTPARAMS ProRbtParams;
 	wofstream ParFile;
-	static HANDLE hSocketThread; 
 
-	if (!GetDesktopIp(desktopIp, sizeof(desktopIp)))
-	{
-		std::wcout << "Failed to obtain IP. Exiting!" << endl;
-		std::cin.get();
-		exit(0);
-	}
-
-	hSocketThread = CreateThread(NULL, 0, SocketThread, NULL, 0, NULL);
+	//Set Header
+	ProRbtParams.Header[0] = '`';
 
 	ParFile.open ("ProRBT.log",ios::app);
 
@@ -89,47 +51,15 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		ParFile << ProRbtParams.Barcode << L" ; " << ProRbtParams.Qty <<  L" ; " << ProRbtParams.SessionId <<
 			L" ; " << ProRbtParams.LineNum << L" ; " << ProRbtParams.TotalLines <<  L" ; " << ProRbtParams.Directive << endl;
+
+		_socket.Connect("10.0.0.3",50004);
+		_socket.Send((void*)&ProRbtParams, sizeof(ProRbtParams),0);
+		_socket.Disconnect();
 	}
 	
-	CloseHandle(hSocketThread);
+	//temp ranm
+	std::cin.get();
+
 	ParFile.close();
 	return 0;
-}
-
-BOOL GetDesktopIp(char *ipAddr, int len)
-{
-	BOOL ret = FALSE;
-
-	IP_ADAPTER_INFO *pAdapterInfo = (IP_ADAPTER_INFO *)new BYTE[sizeof(IP_ADAPTER_INFO)];
-	ULONG OutBufLen = 0;
-	DWORD res = GetAdaptersInfo(pAdapterInfo, &OutBufLen);
-	if (res == ERROR_BUFFER_OVERFLOW)
-	{
-		delete (pAdapterInfo);
-		pAdapterInfo = (IP_ADAPTER_INFO *)new BYTE[OutBufLen];
-		res = GetAdaptersInfo(pAdapterInfo, &OutBufLen);
-	}
-
-	if (res == NO_ERROR)
-	{
-		IP_ADAPTER_INFO *info = pAdapterInfo;
-		do
-		{
-			//RETAILMSG(1, (L"AdapterName = %s\r\n", info->AdapterName));
-			//if (strstr(info->AdapterName, "USB CABLE"))
-			if (strcmp(info->GatewayList.IpAddress.String,"0.0.0.0") != 0)
-			{
-				strncpy_s(ipAddr, len, info->IpAddressList.IpAddress.String, len);
-				ret = TRUE;
-				//break;
-			}
-
-			info = info->Next;
-		}
-		while (info);
-
-	}
-
-	delete (pAdapterInfo);
-	return ret;
 }
