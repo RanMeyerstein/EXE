@@ -9,11 +9,40 @@
 
 using namespace std;
 
+wchar_t ServerIp[16];
+
 struct PRORBTPARAMS
 {
 	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2];
 };
 
+void GetParamsFromConfFile()
+{
+	filebuf *inbuf;
+	char Searchedcontent[21] = "SERVER IP ADDRESS = ";
+	Searchedcontent[20] = '\0';
+	char content[21];
+
+	ifstream ifs("ProRBTConf.txt");
+	if (!ifs.bad())
+	{
+		inbuf = ifs.rdbuf();
+		inbuf->sgetn(content,20);
+		content[20] = '\0';
+		if(strcmp(content,Searchedcontent) == 0)
+		{
+			int AddSize = inbuf->sgetn(content,21);
+			mbstowcs(ServerIp,content,AddSize);
+			ServerIp[AddSize] = L'\0';
+		}
+		else
+		{
+			std::cout <<"Server IP not found. using default 10.0.0.3" << endl;
+			wsprintf(ServerIp,L"10.0.0.3");
+		}
+		ifs.close();
+	}
+}
 
 HANDLE hSocketThread;
 PRORBTPARAMS ProRbtParams;
@@ -32,7 +61,7 @@ void SendtoTcpSever()
 	else
 	{
 		// Establish the connection to the echo server
-		if (!echoClient.Connect(L"10.0.0.3", 50004)) {
+		if (!echoClient.Connect(ServerIp, 50004)) {
 			std::cout <<"Connect() failed";  
 		}
 		else
@@ -96,6 +125,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		ParFile << ProRbtParams.Barcode << L" ; " << ProRbtParams.Qty <<  L" ; " << ProRbtParams.SessionId <<
 			L" ; " << ProRbtParams.LineNum << L" ; " << ProRbtParams.TotalLines <<  L" ; " << ProRbtParams.Directive << endl;
+        
+		GetParamsFromConfFile();
 
 		SendtoTcpSever();
 
