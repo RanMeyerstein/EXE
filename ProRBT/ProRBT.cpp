@@ -47,7 +47,7 @@ void SendtoTcpSever()
 
 			std::cout <<"Message Sent to Server" << endl;
 
-			_TCHAR echoBuffer[8]; // Buffer for echo string  
+			_TCHAR echoBuffer[100]; // Buffer for echo string  
 
 			int bytesRcvd; // Bytes read in single Receive()   
 
@@ -59,6 +59,8 @@ void SendtoTcpSever()
 
 			// Print the echo buffer
 			wcout << "Message from PharmaRobot: " << echoBuffer << endl;
+
+			AfxMessageBox(echoBuffer,MB_OK | MB_TOPMOST);
 
 			echoClient.Close(); // Close the connection
 		}
