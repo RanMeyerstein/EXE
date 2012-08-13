@@ -1,4 +1,4 @@
-// ProRBT.cpp : Defines the entry point for the console application.
+﻿// ProRBT.cpp : Defines the entry point for the console application.
 //
 
 
@@ -31,9 +31,11 @@ void GetParamsFromConfFile()
 		content[20] = '\0';
 		if(strcmp(content,Searchedcontent) == 0)
 		{
-			int AddSize = inbuf->sgetn(content,21);
-			mbstowcs(ServerIp,content,AddSize);
+			streamsize AddSize = inbuf->sgetn(content,21);
+			mbstowcs(ServerIp,content,(size_t)AddSize);
 			ServerIp[AddSize] = L'\0';
+			content[AddSize] = L'\0';
+			std::cout <<"Server IP from configuration file: " << content << endl;
 		}
 		else
 		{
@@ -62,7 +64,8 @@ void SendtoTcpSever()
 	{
 		// Establish the connection to the echo server
 		if (!echoClient.Connect(ServerIp, 50004)) {
-			std::cout <<"Connect() failed";  
+			std::cout <<"Connection to" << ServerIp << "failed" << endl; 
+			AfxMessageBox(L"לא נוצר קשר עם שרת המנפיק",MB_OK | MB_TOPMOST | MB_RTLREADING | MB_ICONERROR);
 		}
 		else
 		{
