@@ -7,35 +7,64 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
 
-wchar_t ServerIp[16];
+using namespace std;
 
 struct PRORBTPARAMS
 {
-	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2];
+	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[2];
 };
+
+wchar_t ServerIp[16];
+HANDLE hSocketThread;
+PRORBTPARAMS ProRbtParams;
+int location;
 
 void GetParamsFromConfFile()
 {
 	filebuf *inbuf;
-	char Searchedcontent[21] = "SERVER IP ADDRESS = ";
-	Searchedcontent[20] = '\0';
-	char content[21];
+	location = 0;
+	char content[100];
+	char searchedIP[21];
+	char searchedCID[13];
+	char StringIPdesc[21] = "SERVER IP ADDRESS = ";
+	char StringCIDdesc[14] = "COUNTER ID = ";
 
 	ifstream ifs("ProRBTConf.txt");
 	if (!ifs.bad())
 	{
 		inbuf = ifs.rdbuf();
-		inbuf->sgetn(content,20);
-		content[20] = '\0';
-		if(strcmp(content,Searchedcontent) == 0)
-		{
-			streamsize AddSize = inbuf->sgetn(content,21);
-			mbstowcs(ServerIp,content,(size_t)AddSize);
-			ServerIp[AddSize] = L'\0';
-			content[AddSize] = L'\0';
-			std::cout <<"Server IP from configuration file: " << content << endl;
+		inbuf->sgetn(content,100);
+		memcpy(searchedIP, content,20);
+		searchedIP[20] ='\0';
+		if(strcmp(searchedIP,StringIPdesc) == 0)
+		{//Serach IP address
+			for (int i = 0 ; i < 100 ; i++)
+			{
+				if(content[i] == '\n') break;
+				location = location + 1;
+			}
+			if (location < 20)
+			{
+				return;
+			}
+			mbstowcs(ServerIp,&(content[20]),(size_t)(location - 20));
+			ServerIp[location - 20] = L'\0';
+			//content[location] = L'\0';
+			std::wcout <<L"Server IP from configuration file: " << ServerIp << endl;
+			//Search for Counter ID
+			memcpy(searchedCID, &(content[location + 1]),13);
+			searchedCID[13] ='\0';
+			if(strcmp(searchedCID,StringCIDdesc) == 0)
+			{ 
+				mbstowcs(ProRbtParams.CounterUnit, &(content[location+14]),(size_t)1 );
+				std::wcout <<L"Counter Unit ID from configuration file: " << ProRbtParams.CounterUnit << endl;		
+			}
+			else
+			{
+				wsprintf(ProRbtParams.CounterUnit,L"0");
+				std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
+			}
 		}
 		else
 		{
@@ -45,9 +74,6 @@ void GetParamsFromConfFile()
 		ifs.close();
 	}
 }
-
-HANDLE hSocketThread;
-PRORBTPARAMS ProRbtParams;
 
 void SendtoTcpSever()
 {
@@ -64,7 +90,7 @@ void SendtoTcpSever()
 	{
 		// Establish the connection to the echo server
 		if (!echoClient.Connect(ServerIp, 50004)) {
-			std::cout <<"Connection to" << ServerIp << "failed" << endl; 
+			std::wcout <<L"Connection to: " << ServerIp << L" failed" << endl; 
 			AfxMessageBox(L"לא נוצר קשר עם שרת המנפיק",MB_OK | MB_TOPMOST | MB_RTLREADING | MB_ICONERROR);
 		}
 		else
@@ -121,8 +147,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		std::wcout << "Session ID [" << ProRbtParams.SessionId << "]" << endl;
 		std::wcout << "Line number[" << ProRbtParams.LineNum << "]" << endl;
 		std::wcout << "Total number of lines [" << ProRbtParams.TotalLines << "]" << endl;
-		if ((ProRbtParams.Directive[0] != '1') && (ProRbtParams.Directive[0] != '2'))
-		std::wcout << L"Bad Directive[" << argv[6] << "] Expected: 1 - Query, 2 - Dispense" << endl;
+		if ((ProRbtParams.Directive[0] != '1') && (ProRbtParams.Directive[0] != '2')) {
+			std::wcout << L"Bad Directive[" << argv[6] << "] Expected: 1 - Query, 2 - Dispense" << endl;
+			goto END;
+		}
 		else
 		std::cout << "Directive [" << (ProRbtParams.Directive[0] == '1' ? "Query": "Dispense") << "]" << endl;
 
@@ -136,7 +164,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	//for debug ranm
 	//std::cin.get();
-
+END:
 	ParFile.close();
 	return 0;
 }
