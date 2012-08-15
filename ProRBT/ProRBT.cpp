@@ -12,65 +12,55 @@ using namespace std;
 
 struct PRORBTPARAMS
 {
-	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[2];
+	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[4];
 };
 
 wchar_t ServerIp[16];
 HANDLE hSocketThread;
 PRORBTPARAMS ProRbtParams;
-int location;
 
 void GetParamsFromConfFile()
 {
 	filebuf *inbuf;
-	location = 0;
 	char content[100];
-	char searchedIP[21];
-	char searchedCID[13];
-	char StringIPdesc[21] = "SERVER IP ADDRESS = ";
-	char StringCIDdesc[14] = "COUNTER ID = ";
+	streamsize size;
 
 	ifstream ifs("ProRBTConf.txt");
 	if (!ifs.bad())
 	{
 		inbuf = ifs.rdbuf();
-		inbuf->sgetn(content,100);
-		memcpy(searchedIP, content,20);
-		searchedIP[20] ='\0';
-		if(strcmp(searchedIP,StringIPdesc) == 0)
-		{//Serach IP address
-			for (int i = 0 ; i < 100 ; i++)
-			{
-				if(content[i] == '\n') break;
-				location = location + 1;
-			}
-			if (location < 20)
-			{
-				return;
-			}
-			mbstowcs(ServerIp,&(content[20]),(size_t)(location - 20));
-			ServerIp[location - 20] = L'\0';
-			//content[location] = L'\0';
+		size = inbuf->sgetn(content,100);
+		content[size] = '\0';
+		CString stContent = content;
+		CString StServerIp, StCounterId;
+
+		if (stContent.Find(L"SERVER IP ADDRESS = ") != -1)
+		{
+			StServerIp = stContent.TrimLeft(L"SERVER IP ADDRESS = ");
+			wsprintf(ServerIp,StServerIp.Left(StServerIp.Find('\n')));
 			std::wcout <<L"Server IP from configuration file: " << ServerIp << endl;
-			//Search for Counter ID
-			memcpy(searchedCID, &(content[location + 1]),13);
-			searchedCID[13] ='\0';
-			if(strcmp(searchedCID,StringCIDdesc) == 0)
-			{ 
-				mbstowcs(ProRbtParams.CounterUnit, &(content[location+14]),(size_t)1 );
-				std::wcout <<L"Counter Unit ID from configuration file: " << ProRbtParams.CounterUnit << endl;		
-			}
-			else
-			{
-				wsprintf(ProRbtParams.CounterUnit,L"0");
-				std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
-			}
 		}
 		else
 		{
 			std::cout <<"Server IP not found. using default 10.0.0.3" << endl;
 			wsprintf(ServerIp,L"10.0.0.3");
 		}
+
+		if (stContent.Find(L"COUNTER ID = ") != -1)
+		{
+			StCounterId = stContent.TrimLeft(ServerIp); 
+			int loc = StCounterId.GetLength() - 14;
+			StCounterId = StCounterId.Right(loc);
+			wsprintf(ProRbtParams.CounterUnit,StCounterId.GetString());
+			std::wcout <<L"Counter Unit ID from configuration file: " << ProRbtParams.CounterUnit << endl;		
+			//Search for Counter ID
+		}
+		else
+		{
+			wsprintf(ProRbtParams.CounterUnit,L"0");
+			std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
+		}
+
 		ifs.close();
 	}
 }
@@ -79,6 +69,7 @@ void SendtoTcpSever()
 {
 	CSocket echoClient;              // Socket descriptor
 
+	AfxWinInit(::GetModuleHandle(NULL), NULL, ::GetCommandLine(), 0);
 	// Initialize the AfxSocket
 	AfxSocketInit(NULL);
 
@@ -114,9 +105,6 @@ void SendtoTcpSever()
 			}
 
 			cout << "bytesRcvd[" << bytesRcvd << "]" << endl;  // Setup to print the echoed string
-
-			// Print the echo buffer
-			wcout << "Message from PharmaRobot: " << echoBuffer << endl;
 
 			AfxMessageBox(echoBuffer,MB_OK | MB_TOPMOST);
 
