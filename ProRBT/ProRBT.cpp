@@ -106,7 +106,7 @@ void SendtoTcpSever()
 
 			cout << "bytesRcvd[" << bytesRcvd << "]" << endl;  // Setup to print the echoed string
 
-			AfxMessageBox(echoBuffer,MB_OK | MB_TOPMOST);
+			AfxMessageBox(echoBuffer,MB_OK | MB_TOPMOST | MB_RTLREADING);
 
 			echoClient.Close(); // Close the connection
 		}
