@@ -15,6 +15,11 @@ struct PRORBTPARAMS
 	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[4];
 };
 
+struct PRORBTPARAMSACK
+{
+	_TCHAR Header[1],Type[1], Message[980];
+};
+
 wchar_t ServerIp[16];
 HANDLE hSocketThread;
 PRORBTPARAMS ProRbtParams;
@@ -96,7 +101,7 @@ void SendtoTcpSever()
 
 			std::cout <<"Message Sent to Server" << endl;
 
-			_TCHAR echoBuffer[100]; // Buffer for echo string  
+			_TCHAR echoBuffer[1000]; // Buffer for echo string  
 
 			int bytesRcvd; // Bytes read in single Receive()   
 
@@ -106,8 +111,23 @@ void SendtoTcpSever()
 
 			cout << "bytesRcvd[" << bytesRcvd << "]" << endl;  // Setup to print the echoed string
 
-			AfxMessageBox(echoBuffer,MB_OK | MB_TOPMOST | MB_RTLREADING);
-
+			PRORBTPARAMSACK * AckedData = (PRORBTPARAMSACK *)echoBuffer;
+			if (AckedData->Header[0] == L'`')
+			{
+				if (AckedData->Type[0] == L'1')
+				{
+					AfxMessageBox(AckedData->Message,MB_OK | MB_RTLREADING | MB_TOPMOST);
+				}
+				else
+				{
+					//only if its an acked message with content that pop up a message box. 
+					//silent exit
+				}
+			}
+			else
+			{
+				AfxMessageBox(L"Bad Ack Header received from PharmaRobot",MB_OK | MB_ICONERROR);
+			}
 			echoClient.Close(); // Close the connection
 		}
 	}
