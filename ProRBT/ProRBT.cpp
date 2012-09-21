@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 
+#define ENVBUFFERSIZE 10
 
 using namespace std;
 
@@ -23,6 +24,29 @@ struct PRORBTPARAMSACK
 wchar_t ServerIp[16];
 HANDLE hSocketThread;
 PRORBTPARAMS ProRbtParams;
+
+void GetParmasFromEnviroment()
+{
+#ifndef COUNTERIDFROMFILE
+	_TCHAR sid[ENVBUFFERSIZE];
+	_TCHAR* psid = sid;
+	errno_t Err;
+	size_t sizebuffer = ENVBUFFERSIZE;
+
+	Err =  _wdupenv_s(&psid, &sizebuffer,L"SID"); 
+	
+	if (*psid != NULL)
+	{
+		wsprintf(ProRbtParams.CounterUnit,psid);
+		std::wcout <<L"Counter Unit ID from Environent Variable SID: " << ProRbtParams.CounterUnit << endl;		
+	}
+	else
+	{
+		wsprintf(ProRbtParams.CounterUnit,L"0");
+		std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
+	}
+#endif
+}
 
 void GetParamsFromConfFile()
 {
@@ -50,7 +74,7 @@ void GetParamsFromConfFile()
 			std::cout <<"Server IP not found. using default 10.0.0.3" << endl;
 			wsprintf(ServerIp,L"10.0.0.3");
 		}
-
+#ifdef COUNTERIDFROMFILE
 		if (stContent.Find(L"COUNTER ID = ") != -1)
 		{
 			StCounterId = stContent.TrimLeft(ServerIp); 
@@ -65,7 +89,7 @@ void GetParamsFromConfFile()
 			wsprintf(ProRbtParams.CounterUnit,L"0");
 			std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
 		}
-
+#endif
 		ifs.close();
 	}
 }
@@ -166,6 +190,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			L" ; " << ProRbtParams.LineNum << L" ; " << ProRbtParams.TotalLines <<  L" ; " << ProRbtParams.Directive << endl;
         
 		GetParamsFromConfFile();
+
+		GetParmasFromEnviroment();
 
 		SendtoTcpSever();
 
