@@ -1,2 +1,6 @@
-SERVER IP ADDRESS = 10.0.0.3
-COUNTER ID = 101
+SERVER IP ADDRESS = 10.0.0.4
+Number of dispensers = 4
+Last SID for Dispenser number 1 = 1
+Last SID for Dispenser number 2 = 4
+Last SID for Dispenser number 3 = 8
+Last SID for Dispenser number 4 = 10

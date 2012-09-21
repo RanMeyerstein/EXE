@@ -13,7 +13,7 @@ using namespace std;
 
 struct PRORBTPARAMS
 {
-	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[4];
+	_TCHAR Header[1],Barcode[14], Qty[4], SessionId[17], LineNum[5], TotalLines[5], Directive[2], CounterUnit[4], Dispenser[3];
 };
 
 struct PRORBTPARAMSACK
@@ -24,10 +24,10 @@ struct PRORBTPARAMSACK
 wchar_t ServerIp[16];
 HANDLE hSocketThread;
 PRORBTPARAMS ProRbtParams;
+int StationId, DispenserNumber;
 
 void GetParmasFromEnviroment()
 {
-#ifndef COUNTERIDFROMFILE
 	_TCHAR sid[ENVBUFFERSIZE];
 	_TCHAR* psid = sid;
 	errno_t Err;
@@ -38,34 +38,39 @@ void GetParmasFromEnviroment()
 	if (*psid != NULL)
 	{
 		wsprintf(ProRbtParams.CounterUnit,psid);
-		std::wcout <<L"Counter Unit ID from Environent Variable SID: " << ProRbtParams.CounterUnit << endl;		
+		std::wcout <<L"Counter Unit ID from Environent Variable SID: " << ProRbtParams.CounterUnit << endl;
+
 	}
 	else
 	{
-		wsprintf(ProRbtParams.CounterUnit,L"0");
+		wsprintf(ProRbtParams.CounterUnit,L"1");
 		std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
 	}
-#endif
+	StationId = _wtoi(ProRbtParams.CounterUnit);
 }
+
+
 
 void GetParamsFromConfFile()
 {
 	filebuf *inbuf;
-	char content[100];
+	char content[1000];
 	streamsize size;
+	int loc, numdis, disThresh;
 
 	ifstream ifs("ProRBTConf.txt");
 	if (!ifs.bad())
 	{
 		inbuf = ifs.rdbuf();
-		size = inbuf->sgetn(content,100);
+		size = inbuf->sgetn(content,1000);
 		content[size] = '\0';
 		CString stContent = content;
-		CString StServerIp, StCounterId;
+		CString StServerIp, StCounterId, StNumDis, StHelper;
 
 		if (stContent.Find(L"SERVER IP ADDRESS = ") != -1)
 		{
 			StServerIp = stContent.TrimLeft(L"SERVER IP ADDRESS = ");
+			size -= sizeof("SERVER IP ADDRESS = ");
 			wsprintf(ServerIp,StServerIp.Left(StServerIp.Find('\n')));
 			std::wcout <<L"Server IP from configuration file: " << ServerIp << endl;
 		}
@@ -74,22 +79,40 @@ void GetParamsFromConfFile()
 			std::cout <<"Server IP not found. using default 10.0.0.3" << endl;
 			wsprintf(ServerIp,L"10.0.0.3");
 		}
-#ifdef COUNTERIDFROMFILE
-		if (stContent.Find(L"COUNTER ID = ") != -1)
+
+		//Find number of dispensers
+		loc = stContent.Find(L"Number of dispensers = ");
+		if (loc != -1)
 		{
-			StCounterId = stContent.TrimLeft(ServerIp); 
-			int loc = StCounterId.GetLength() - 14;
-			StCounterId = StCounterId.Right(loc);
-			wsprintf(ProRbtParams.CounterUnit,StCounterId.GetString());
-			std::wcout <<L"Counter Unit ID from configuration file: " << ProRbtParams.CounterUnit << endl;		
-			//Search for Counter ID
+			StNumDis = stContent.Mid(loc + sizeof("Number of dispensers ="), 4);
+			StNumDis = StNumDis.Left(StNumDis.Find('\n'));
+			std::wcout <<L"Total Number of Dispensers: " << StNumDis.GetString();
+			numdis = _wtoi(StNumDis.GetString());
+
+			//Thresholds of Counter or Station ID in order to find the Dispenser number for this Station ID
+			for (int i = 1 ; i <= numdis ; i++) {
+				if (stContent.Find(L"Last SID for Dispenser number") != -1)// Looking for the number
+				{
+					loc = stContent.Find(L"Last SID for Dispenser number");
+					StNumDis = stContent.Mid(loc + sizeof("Last SID for Dispenser number X ="), 1000); //X substitudes the SID
+					StNumDis = StNumDis.Left(StNumDis.Find('\n'));
+					disThresh = _wtoi(StNumDis.GetString());
+					if(StationId <= disThresh)
+					{
+						wsprintf(ProRbtParams.Dispenser,L"%d",i); //found the dispenser number for this station ID
+						std::wcout <<L" Dispenser ID: " << ProRbtParams.Dispenser << endl;
+						break; //exit the "for" 
+					}
+					stContent = stContent.Mid(loc + sizeof("Last SID for Dispenser number X = x"), (int)size);
+					size -= loc + sizeof("Last SID for Dispenser number X = x");
+				}
+			}
 		}
 		else
 		{
-			wsprintf(ProRbtParams.CounterUnit,L"0");
-			std::wcout <<L"Counter Unit ID default: " << ProRbtParams.CounterUnit << endl;
+			std::cout <<"Number of dispensers not found. Assuming 1" << endl;
 		}
-#endif
+
 		ifs.close();
 	}
 }
@@ -144,7 +167,7 @@ void SendtoTcpSever()
 				}
 				else
 				{
-					//only if its an acked message with content that pop up a message box. 
+					//only an acked message with content pops up a message box. 
 					//silent exit
 				}
 			}
@@ -188,10 +211,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		ParFile << ProRbtParams.Barcode << L" ; " << ProRbtParams.Qty <<  L" ; " << ProRbtParams.SessionId <<
 			L" ; " << ProRbtParams.LineNum << L" ; " << ProRbtParams.TotalLines <<  L" ; " << ProRbtParams.Directive << endl;
-        
-		GetParamsFromConfFile();
 
 		GetParmasFromEnviroment();
+
+		GetParamsFromConfFile();
 
 		SendtoTcpSever();
 
