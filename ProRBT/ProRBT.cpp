@@ -7,6 +7,8 @@
 #include <iostream>
 #include <fstream>
 
+//#define LOGFILEON
+
 #define ENVBUFFERSIZE 10
 
 using namespace std;
@@ -182,9 +184,12 @@ void SendtoTcpSever()
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+
+#ifdef LOGFILEON
 	wofstream ParFile;
 
 	ParFile.open ("ProRBT.log",ios::app);
+#endif
 
 	if (argc < 6) { // Check the value of argc. If not enough parameters have been passed, inform user and exit.
 		std::cout << "Usage is [Barcode 13] [Qty 3] [ID 16] [Line no. 4] [Total no. 4] [Directive 1]\n"; // Inform the user of how to use the program
@@ -209,8 +214,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		else
 		std::cout << "Directive [" << (ProRbtParams.Directive[0] == '1' ? "Query": "Dispense") << "]" << endl;
 
+#ifdef LOGFILEON
 		ParFile << ProRbtParams.Barcode << L" ; " << ProRbtParams.Qty <<  L" ; " << ProRbtParams.SessionId <<
 			L" ; " << ProRbtParams.LineNum << L" ; " << ProRbtParams.TotalLines <<  L" ; " << ProRbtParams.Directive << endl;
+#endif
 
 		GetParmasFromEnviroment();
 
@@ -222,6 +229,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	//for debug ranm
 	//std::cin.get();
 END:
+
+#ifdef LOGFILEON
 	ParFile.close();
+#endif
+
 	return 0;
 }
