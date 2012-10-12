@@ -1,6 +1,5 @@
-SERVER IP ADDRESS = 10.0.0.4
-Number of dispensers = 4
-Last SID for Dispenser number 1 = 1
-Last SID for Dispenser number 2 = 4
-Last SID for Dispenser number 3 = 8
-Last SID for Dispenser number 4 = 10
+SERVER IP ADDRESS = 192.168.1.10
+Number of dispensers = 3
+Last SID for Dispenser number 1 = 3
+Last SID for Dispenser number 2 = 6
+Last SID for Dispenser number 3 = 12

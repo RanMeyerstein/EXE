@@ -101,7 +101,8 @@ void GetParamsFromConfFile()
 					disThresh = _wtoi(StNumDis.GetString());
 					if(StationId <= disThresh)
 					{
-						wsprintf(ProRbtParams.Dispenser,L"%d",i); //found the dispenser number for this station ID
+						//THE DISPENSER NUMBER ARE SWITCHED 1-3 GOTO 3 4-6 GOTO 2 AND 7 AND UP GOTO 1
+						wsprintf(ProRbtParams.Dispenser,L"%d",(numdis + 1) - i); //found the dispenser number for this station ID
 						std::wcout <<L" Dispenser ID: " << ProRbtParams.Dispenser << endl;
 						break; //exit the "for" 
 					}
